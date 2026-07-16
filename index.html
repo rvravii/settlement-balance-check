@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Settlement Balance Check</title>
+  <title>Daily Dashboard Analysis (Ignite)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -250,7 +250,33 @@
     .panel-body { padding: 12px 16px 16px; }
 
     .chart-wrap { height: 260px; position: relative; }
-    canvas { width: 100%; height: 100%; display: block; }
+    canvas { width: 100%; height: 100%; display: block; cursor: default; }
+
+    .chart-tooltip {
+      position: absolute;
+      pointer-events: none;
+      z-index: 5;
+      display: none;
+      min-width: 120px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #121820;
+      color: var(--text);
+      font-size: 12px;
+      box-shadow: none;
+      transform: translate(-50%, -110%);
+      white-space: nowrap;
+    }
+
+    .chart-tooltip.show { display: block; }
+    .chart-tooltip .t-date { color: var(--muted); margin-bottom: 2px; }
+    .chart-tooltip .t-diff {
+      font-family: var(--mono);
+      font-weight: 500;
+      color: var(--danger);
+      font-size: 13px;
+    }
 
     .empty-state {
       text-align: center;
@@ -322,8 +348,8 @@
 <body>
   <div class="wrap">
     <header class="hero">
-      <div class="brand">Settlement Ops · Reconciliation</div>
-      <h1>Settlement Balance Check</h1>
+      <div class="brand">Ignite · Settlement Ops</div>
+      <h1>Daily Dashboard Analysis (Ignite)</h1>
       <p class="subtitle">
         Upload one or more monthly Excel exports. The dashboard checks Starting Balance through Deposit against Ending Balance and shows only mismatch days.
       </p>
@@ -389,6 +415,10 @@
         <div class="panel-body">
           <div class="chart-wrap" id="chartWrap">
             <canvas id="diffChart"></canvas>
+            <div class="chart-tooltip" id="chartTooltip" role="tooltip">
+              <div class="t-date" id="tipDate"></div>
+              <div class="t-diff" id="tipDiff"></div>
+            </div>
             <div class="empty-state" id="chartEmpty" style="display:none">
               No mismatches in this selection. <strong>All days match.</strong>
             </div>
@@ -724,9 +754,36 @@
         .join("");
     }
 
-    function drawChart(mismatches) {
+    let chartBars = [];
+    let chartHoverIdx = -1;
+
+    function hideChartTooltip() {
+      const tip = document.getElementById("chartTooltip");
+      tip.classList.remove("show");
+      chartHoverIdx = -1;
+      const canvas = document.getElementById("diffChart");
+      if (canvas) canvas.style.cursor = "default";
+    }
+
+    function showChartTooltip(bar, clientX, clientY) {
+      const wrap = document.getElementById("chartWrap");
+      const tip = document.getElementById("chartTooltip");
+      const rect = wrap.getBoundingClientRect();
+      document.getElementById("tipDate").textContent = `${bar.d.label} · ${bar.d.monthLabel}`;
+      document.getElementById("tipDiff").textContent = `Difference: ${money(bar.d.diff)}`;
+      tip.classList.add("show");
+      let left = clientX - rect.left;
+      let top = clientY - rect.top;
+      left = Math.max(60, Math.min(rect.width - 60, left));
+      top = Math.max(36, top);
+      tip.style.left = `${left}px`;
+      tip.style.top = `${top}px`;
+    }
+
+    function paintChart(mismatches, highlightIdx) {
       const canvas = document.getElementById("diffChart");
       const empty = document.getElementById("chartEmpty");
+      const tip = document.getElementById("chartTooltip");
       const ctx = canvas.getContext("2d");
       const dpr = window.devicePixelRatio || 1;
       const cssW = canvas.clientWidth || canvas.parentElement.clientWidth;
@@ -735,6 +792,8 @@
       canvas.style.display = mismatches.length ? "block" : "none";
       empty.style.display = mismatches.length ? "none" : "block";
       if (!mismatches.length) {
+        tip.classList.remove("show");
+        chartBars = [];
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         return;
       }
@@ -768,14 +827,29 @@
         ctx.fillText(label, pad.l - 8, yScale(v) + 3);
       });
 
+      chartBars = [];
       mismatches.forEach((d, i) => {
         const x = pad.l + i * gap + (gap - barW) / 2;
         const y0 = yScale(0);
         const y1 = yScale(d.diff);
         const top = Math.min(y0, y1);
         const height = Math.max(3, Math.abs(y1 - y0));
-        ctx.fillStyle = "#f07178";
+        const active = i === highlightIdx;
+        ctx.fillStyle = active ? "#ff8a90" : "#f07178";
         ctx.fillRect(x, top, barW, height);
+
+        // Hit area covers full column for easier hover
+        chartBars.push({
+          x: pad.l + i * gap,
+          y: pad.t,
+          w: gap,
+          h: h,
+          barX: x,
+          barY: top,
+          barW,
+          barH: height,
+          d,
+        });
 
         ctx.fillStyle = "#8a9bab";
         ctx.font = "10px DM Sans, sans-serif";
@@ -783,6 +857,44 @@
         const label = mismatches.length > 18 ? d.label.replace(/^[A-Za-z]+ /, "") : d.label;
         ctx.fillText(label, x + barW / 2, cssH - 14);
       });
+    }
+
+    function drawChart(mismatches) {
+      chartHoverIdx = -1;
+      hideChartTooltip();
+      paintChart(mismatches, -1);
+
+      const canvas = document.getElementById("diffChart");
+      canvas.onmousemove = (e) => {
+        if (!chartBars.length) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const idx = chartBars.findIndex(
+          (b) => mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h
+        );
+        if (idx === -1) {
+          if (chartHoverIdx !== -1) {
+            chartHoverIdx = -1;
+            paintChart(mismatches, -1);
+            hideChartTooltip();
+          }
+          canvas.style.cursor = "default";
+          return;
+        }
+        canvas.style.cursor = "pointer";
+        if (idx !== chartHoverIdx) {
+          chartHoverIdx = idx;
+          paintChart(mismatches, idx);
+        }
+        showChartTooltip(chartBars[idx], e.clientX, e.clientY);
+      };
+      canvas.onmouseleave = () => {
+        if (!mismatches.length) return;
+        chartHoverIdx = -1;
+        paintChart(mismatches, -1);
+        hideChartTooltip();
+      };
     }
 
     function clearAll() {

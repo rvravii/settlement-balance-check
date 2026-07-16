@@ -1,4 +1,4 @@
-# Settlement Balance Check
+# Daily Dashboard Analysis (Ignite)
 
 Upload settlement Excel exports (one month or multiple months) and see **mismatch-only** results:
 
