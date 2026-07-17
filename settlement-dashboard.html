@@ -170,18 +170,75 @@
       margin-bottom: 14px;
     }
 
-    .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .filters {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      flex: 1;
+    }
 
-    select.month-filter {
-      font-family: var(--font);
+    .param-block {
+      display: grid;
+      gap: 8px;
+      min-width: min(100%, 420px);
+    }
+
+    .param-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .month-checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .month-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       font-size: 13px;
       color: var(--text);
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 8px 12px;
-      min-width: 160px;
+      padding: 7px 10px;
+      cursor: pointer;
+      user-select: none;
     }
+
+    .month-check:hover { border-color: #3d5160; }
+    .month-check:has(input:checked) {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .month-check input {
+      accent-color: var(--accent);
+      width: 14px;
+      height: 14px;
+      margin: 0;
+    }
+
+    .month-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .export-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
     .kpis {
       display: grid;
@@ -378,13 +435,23 @@
     <div class="results" id="results">
       <div class="toolbar">
         <div class="filters">
-          <label for="monthFilter" style="font-size:12px;color:var(--muted)">Month</label>
-          <select class="month-filter" id="monthFilter">
-            <option value="all">All months</option>
-          </select>
+          <div class="param-block">
+            <div class="param-label">Parameters · Month</div>
+            <div class="month-checks" id="monthChecks"></div>
+            <div class="month-actions">
+              <button class="btn" type="button" id="selectAllMonths">Select all</button>
+              <button class="btn" type="button" id="clearMonths">Clear</button>
+            </div>
+          </div>
         </div>
-        <div style="font-size:12px;color:var(--muted);font-family:var(--mono)">
-          Σ(Start…Deposit) − Ending = Difference · ±$0.02
+        <div class="toolbar-right">
+          <div class="export-actions">
+            <button class="btn primary" type="button" id="exportCsvBtn">Export CSV</button>
+            <button class="btn primary" type="button" id="exportXlsxBtn">Export Excel</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);font-family:var(--mono)">
+            Σ(Start…Deposit) − Ending = Difference · ±$0.02
+          </div>
         </div>
       </div>
 
@@ -481,7 +548,8 @@
     const clearBtn = document.getElementById("clearBtn");
     const errorBox = document.getElementById("errorBox");
     const results = document.getElementById("results");
-    const monthFilter = document.getElementById("monthFilter");
+    const monthChecksEl = document.getElementById("monthChecks");
+    let selectedMonths = new Set(); // empty = none selected
 
     function money(n) {
       const abs = Math.abs(n).toLocaleString("en-US", {
@@ -694,16 +762,152 @@
 
     function buildMonthFilter() {
       const months = [...new Set(allDays.map((d) => d.month))].sort();
-      const current = monthFilter.value || "all";
-      monthFilter.innerHTML =
-        `<option value="all">All months (${months.length})</option>` +
-        months.map((m) => `<option value="${m}">${monthLabel(m)}</option>`).join("");
-      monthFilter.value = months.includes(current) ? current : "all";
+      // Keep previous selections when possible; default select all new months
+      const next = new Set();
+      for (const m of months) {
+        if (selectedMonths.size === 0 || selectedMonths.has(m)) next.add(m);
+      }
+      if (next.size === 0) months.forEach((m) => next.add(m));
+      selectedMonths = next;
+
+      monthChecksEl.innerHTML = months
+        .map(
+          (m) => `
+        <label class="month-check">
+          <input type="checkbox" value="${m}" ${selectedMonths.has(m) ? "checked" : ""} />
+          <span>${monthLabel(m)}</span>
+        </label>`
+        )
+        .join("");
+
+      monthChecksEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.addEventListener("change", () => {
+          if (cb.checked) selectedMonths.add(cb.value);
+          else selectedMonths.delete(cb.value);
+          renderAll();
+        });
+      });
     }
 
     function scopedDays() {
-      const m = monthFilter.value;
-      return m === "all" ? allDays : allDays.filter((d) => d.month === m);
+      if (!selectedMonths.size) return [];
+      return allDays.filter((d) => selectedMonths.has(d.month));
+    }
+
+    function getReportRows() {
+      const days = scopedDays();
+      const mismatches = days.filter((d) => d.status === "Mismatch");
+      return { days, mismatches };
+    }
+
+    function exportFileName(ext) {
+      const stamp = new Date().toISOString().slice(0, 10);
+      const months = [...selectedMonths].sort().join("_") || "none";
+      return `daily-dashboard-analysis-ignite_${months}_${stamp}.${ext}`;
+    }
+
+    function buildExportSheets() {
+      const { days, mismatches } = getReportRows();
+      const match = days.filter((d) => d.status === "Match").length;
+      const rate = days.length ? ((match / days.length) * 100).toFixed(1) + "%" : "—";
+
+      const summary = [
+        ["Report", "Daily Dashboard Analysis (Ignite)"],
+        ["Generated", new Date().toISOString()],
+        ["Selected months", [...selectedMonths].sort().map(monthLabel).join(", ") || "(none)"],
+        ["Days checked", days.length],
+        ["Match", match],
+        ["Mismatch", mismatches.length],
+        ["Match rate", rate],
+        [],
+        ["Formula", "Starting Balance + Collected + Collections + Refunds + Chargeback + Returns + Deduction + Reimbursement + Less: Payments at Club + Deposit = Ending Balance (±0.02)"],
+      ];
+
+      const mismatchRows = [
+        ["Date", "Month", "Calculated Ending", "Ending Balance", "Difference", "Status", "Source File"],
+        ...mismatches.map((d) => [
+          d.date,
+          d.monthLabel,
+          d.calc,
+          d.ending,
+          d.diff,
+          d.status,
+          d.sourceFile || "",
+        ]),
+      ];
+
+      const allRows = [
+        ["Date", "Month", "Calculated Ending", "Ending Balance", "Difference", "Status", "Source File"],
+        ...days.map((d) => [
+          d.date,
+          d.monthLabel,
+          d.calc,
+          d.ending,
+          d.diff,
+          d.status,
+          d.sourceFile || "",
+        ]),
+      ];
+
+      return { summary, mismatchRows, allRows, mismatches };
+    }
+
+    function downloadBlob(filename, blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportCsv() {
+      if (!allDays.length) {
+        showError("Upload data before exporting.");
+        return;
+      }
+      clearError();
+      const { summary, mismatchRows, allRows } = buildExportSheets();
+      const toCsv = (rows) =>
+        rows
+          .map((row) =>
+            row
+              .map((cell) => {
+                const s = cell === null || cell === undefined ? "" : String(cell);
+                return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+              })
+              .join(",")
+          )
+          .join("\n");
+
+      const csv = [
+        "=== Summary ===",
+        toCsv(summary),
+        "",
+        "=== Mismatch Days ===",
+        toCsv(mismatchRows),
+        "",
+        "=== All Selected Days ===",
+        toCsv(allRows),
+      ].join("\n");
+
+      downloadBlob(exportFileName("csv"), new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    }
+
+    function exportExcel() {
+      if (!allDays.length) {
+        showError("Upload data before exporting.");
+        return;
+      }
+      clearError();
+      const { summary, mismatchRows, allRows } = buildExportSheets();
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mismatchRows), "Mismatch Days");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allRows), "All Selected Days");
+      XLSX.writeFile(wb, exportFileName("xlsx"));
     }
 
     function renderAll() {
@@ -713,19 +917,18 @@
       }
       results.classList.add("show");
 
-      const days = scopedDays();
+      const { days, mismatches } = getReportRows();
       const match = days.filter((d) => d.status === "Match").length;
-      const mis = days.filter((d) => d.status === "Mismatch");
       const total = days.length;
       const rate = total ? ((match / total) * 100).toFixed(1) + "%" : "—";
 
       document.getElementById("kpiDays").textContent = String(total);
       document.getElementById("kpiMatch").textContent = String(match);
-      document.getElementById("kpiMis").textContent = String(mis.length);
+      document.getElementById("kpiMis").textContent = String(mismatches.length);
       document.getElementById("kpiRate").textContent = rate;
 
-      renderTable(mis);
-      drawChart(mis);
+      renderTable(mismatches);
+      drawChart(mismatches);
     }
 
     function renderTable(mismatches) {
@@ -900,6 +1103,8 @@
     function clearAll() {
       allDays = [];
       loadedFiles = [];
+      selectedMonths = new Set();
+      monthChecksEl.innerHTML = "";
       renderFileTags();
       clearBtn.disabled = true;
       results.classList.remove("show");
@@ -920,7 +1125,26 @@
       e.stopPropagation();
       clearAll();
     });
-    monthFilter.addEventListener("change", renderAll);
+
+    document.getElementById("selectAllMonths").addEventListener("click", () => {
+      const months = [...new Set(allDays.map((d) => d.month))];
+      selectedMonths = new Set(months);
+      monthChecksEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.checked = true;
+      });
+      renderAll();
+    });
+
+    document.getElementById("clearMonths").addEventListener("click", () => {
+      selectedMonths = new Set();
+      monthChecksEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.checked = false;
+      });
+      renderAll();
+    });
+
+    document.getElementById("exportCsvBtn").addEventListener("click", exportCsv);
+    document.getElementById("exportXlsxBtn").addEventListener("click", exportExcel);
 
     ["dragenter", "dragover"].forEach((evt) => {
       uploadZone.addEventListener(evt, (e) => {
