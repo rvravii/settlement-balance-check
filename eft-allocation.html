@@ -448,12 +448,14 @@
     }
 
     function parseTaxSummary(rows) {
-      // Tax Summary layout:
-      // col 5  = Gross Invoices Total (incl. tax)
+      // Tax Summary layout (TOTALS INCLUDING TAX):
+      // col 5  = Gross Invoices Total
+      // col 10 = Total Collected Total
       // col 20 = Pre-Tax Gross Invoices Total (Invoice side of Total)
       const GROSS_COL = 5;
+      const COLLECTED_COL = 10;
       const PRETAX_COL = 20;
-      let gross = 0, pretax = 0;
+      let gross = 0, pretax = 0, collected = 0;
       const clubs = [];
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
@@ -462,6 +464,7 @@
         const low = club.toLowerCase();
         if (low === "total" || low === "grand total") {
           gross = cellNum(r, GROSS_COL);
+          collected = cellNum(r, COLLECTED_COL);
           pretax = cellNum(r, PRETAX_COL);
           continue;
         }
@@ -471,10 +474,11 @@
           club,
           code,
           gross: cellNum(r, GROSS_COL),
+          collected: cellNum(r, COLLECTED_COL),
           pretax: cellNum(r, PRETAX_COL),
         });
       }
-      return { gross, pretax, clubs };
+      return { gross, pretax, collected, clubs };
     }
 
     function parseCombinedSummary(rows) {
@@ -791,6 +795,13 @@
             leftVal: comb.recapTotalCollected,
             rightLabel: "EFT Total Collected",
             rightVal: eft.totalCollected,
+          },
+          {
+            name: "Total Collected in Cycle Recap vs Tax",
+            leftLabel: "Recap · Total Collected in Cycle",
+            leftVal: comb.recapTotalCollected,
+            rightLabel: "Tax Summary · Total Collected",
+            rightVal: tax.collected,
           },
         ];
 
