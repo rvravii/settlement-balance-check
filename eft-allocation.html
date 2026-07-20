@@ -2,405 +2,506 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>EFT Allocation · QA Match</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EFT Allocation — ABC Insights QA</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <style>
     :root {
-      --bg: #0f1419;
-      --surface: #182028;
-      --surface-2: #1e2a33;
-      --border: #2a3944;
-      --text: #e8eef2;
-      --muted: #8a9bab;
-      --accent: #2dd4a8;
-      --accent-dim: rgba(45, 212, 168, 0.14);
-      --danger: #f07178;
-      --danger-dim: rgba(240, 113, 120, 0.14);
-      --blue: #5b8def;
-      --radius: 10px;
-      --font: "DM Sans", system-ui, sans-serif;
-      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --bg: #0b1220;
+      --panel: #111827;
+      --panel2: #0f172a;
+      --line: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --bad: #ef4444;
+      --warn: #f59e0b;
+      --info: #60a5fa;
+      --expected: #a78bfa;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
     body {
-      font-family: var(--font);
-      background: radial-gradient(900px 420px at 10% -10%, #1a2f2a 0%, transparent 55%), var(--bg);
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1e293b 0%, var(--bg) 55%);
       color: var(--text);
-      min-height: 100vh;
-      line-height: 1.45;
     }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 56px; }
-    .brand { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
-    h1 { font-size: clamp(1.4rem, 2.6vw, 1.9rem); font-weight: 700; margin: 6px 0; }
-    .subtitle { color: var(--muted); font-size: 0.95rem; max-width: 62ch; }
-    .upload-zone {
-      margin: 18px 0;
-      border: 1.5px dashed var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      padding: 22px;
-      text-align: center;
-      cursor: pointer;
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { margin: 0 0 6px; font-size: 1.55rem; }
+    .sub { color: var(--muted); margin-bottom: 18px; font-size: 0.92rem; line-height: 1.5; }
+    .badge-local {
+      display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+      background: #422006; color: #fdba74; font-size: 0.72rem; font-weight: 700; vertical-align: middle;
     }
-    .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--accent-dim); }
-    .upload-zone h2 { font-size: 1rem; margin-bottom: 6px; }
-    .upload-zone p { color: var(--muted); font-size: 13px; }
-    .hint { margin-top: 8px; font-size: 12px; color: var(--muted); font-family: var(--mono); }
-    .actions { margin-top: 14px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .card {
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .upload-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     .btn {
-      font-family: var(--font); font-size: 13px; font-weight: 600;
-      border-radius: 8px; padding: 9px 14px; border: 1px solid var(--border);
-      background: var(--surface-2); color: var(--text); cursor: pointer;
+      background: var(--accent); color: #082f49; border: 0; border-radius: 10px;
+      padding: 10px 14px; font-weight: 700; cursor: pointer;
     }
-    .btn.primary { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-    #fileInput { display: none; }
-    .error-box {
-      display: none; margin-bottom: 14px; padding: 12px 14px; border-radius: 8px;
-      background: var(--danger-dim); border: 1px solid rgba(240,113,120,0.35); color: var(--danger); font-size: 13px;
+    .meta { color: var(--muted); font-size: 0.86rem; margin-top: 8px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+    .kpi { background: #0b1324; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .kpi .l { color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+    .kpi .v { font-size: 1.35rem; font-weight: 800; margin-top: 4px; }
+    .kpi .hint { color: var(--muted); font-size: 0.72rem; line-height: 1.35; margin-top: 6px; }
+    .kpi.clickable {
+      cursor: pointer; transition: border-color 0.15s, transform 0.15s;
     }
-    .error-box.show { display: block; }
-    .results { display: none; }
-    .results.show { display: block; }
-    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
-    .kpi {
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 14px; position: relative; overflow: hidden;
+    .kpi.clickable:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .kpi.clickable .nav {
+      color: var(--accent); font-size: 0.72rem; font-weight: 700; margin-top: 8px;
     }
-    .kpi::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--border); }
-    .kpi.ok::before { background: var(--accent); }
-    .kpi.bad::before { background: var(--danger); }
-    .kpi.neutral::before { background: var(--blue); }
-    .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
-    .kpi .value { font-family: var(--mono); font-size: 1.5rem; font-weight: 500; }
-    .kpi.ok .value { color: var(--accent); }
-    .kpi.bad .value { color: var(--danger); }
-    .panel {
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-      overflow: hidden; margin-bottom: 14px;
+    .section-flash {
+      animation: sectionFlash 1.2s ease;
     }
-    .panel-head {
-      display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-      padding: 12px 14px; border-bottom: 1px solid var(--border);
+    @keyframes sectionFlash {
+      0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55); }
+      100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
     }
-    .panel-head h2 { font-size: 0.95rem; }
-    .panel-head span { font-size: 12px; color: var(--muted); }
-    .table-scroll { overflow: auto; max-height: 520px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th {
-      position: sticky; top: 0; background: var(--surface-2); text-align: left;
-      font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
-      font-weight: 600; padding: 10px 12px; border-bottom: 1px solid var(--border);
+    .ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+    .info { color: var(--info); } .expected { color: var(--expected); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+    th, td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .pass { color: var(--ok); font-weight: 700; }
+    .fail { color: var(--bad); font-weight: 700; }
+    .hidden { display: none; }
+    .note { color: var(--muted); font-size: 0.84rem; line-height: 1.45; }
+    .checks { display: grid; gap: 8px; margin-top: 10px; }
+    .check {
+      display: grid; grid-template-columns: 1.4fr 1fr 1fr 0.7fr 0.6fr;
+      gap: 8px; align-items: center; background: #0b1324; border: 1px solid var(--line);
+      border-radius: 10px; padding: 10px 12px; font-size: 0.86rem;
     }
-    th.num, td.num { text-align: right; font-family: var(--mono); }
-    td { padding: 9px 12px; border-bottom: 1px solid rgba(42,57,68,0.7); vertical-align: top; }
-    tr.match td { background: var(--accent-dim); }
-    tr.mismatch td { background: var(--danger-dim); }
-    .badge {
-      display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+    .check .name { font-weight: 700; }
+    .pill {
+      display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
     }
-    .badge.match { color: var(--accent); background: var(--accent-dim); }
-    .badge.mismatch { color: var(--danger); background: var(--danger-dim); }
-    .meta { color: var(--muted); font-size: 12px; margin-bottom: 12px; font-family: var(--mono); }
-    .toolbar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
-    .note { margin-top: 10px; color: var(--muted); font-size: 12px; }
-    @media (max-width: 800px) { .kpis { grid-template-columns: 1fr 1fr; } }
+    .pill.ok { background: #052e1a; color: #86efac; }
+    .pill.bad { background: #450a0a; color: #fca5a5; }
+    .pill.warn { background: #422006; color: #fcd34d; }
+    .pill.info { background: #0c1a33; color: #93c5fd; }
+    .pill.expected { background: #2e1065; color: #d8b4fe; }
+    .section-title { margin: 0 0 8px; font-size: 1.05rem; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .collapse-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      cursor: pointer; user-select: none; padding: 4px 0;
+    }
+    .collapse-head:hover .section-title { color: var(--accent); }
+    .collapse-toggle {
+      flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px;
+      border: 1px solid var(--line); background: #0b1324; color: var(--text);
+      display: grid; place-items: center; font-size: 0.85rem; font-weight: 800;
+    }
+    .collapse-body.closed { display: none; }
+    .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .upload-box {
+      background: #0b1324; border: 1px dashed #334155; border-radius: 12px; padding: 14px;
+    }
+    .upload-box h3 { margin: 0 0 6px; font-size: 0.95rem; }
+    .row-expected { background: rgba(167, 139, 250, 0.08); }
+    .row-unexpected { background: rgba(239, 68, 68, 0.12); }
+    .row-only-roy { background: rgba(245, 158, 11, 0.10); }
+    .row-only-tax { background: rgba(96, 165, 250, 0.10); }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+    @media (max-width: 980px) {
+      .kpis { grid-template-columns: 1fr 1fr; }
+      .check { grid-template-columns: 1fr; }
+      .upload-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="brand">EOM · EFT Allocation / Annual</div>
-    <h1>Combined Summary Match Check</h1>
-    <p class="subtitle">
-      Upload EFT Allocation or EFT Allocation Annual Excel. Tool reads EFT Summary, Tax Summary, and Combined Summary,
-      then validates Gross Invoices, Delinquent Recovery, Total Collected in Cycle, and club-level Gross Invoice gaps.
+    <h1>EFT Allocation</h1>
+    <p class="sub">
+      Step 1 — upload EFT Allocation (EFT / Tax / Combined Summary checks).<br />
+      Step 2 — upload Royalty Report + Upgraded Club List (PFAQ) for Gross Invoice validation vs Tax Summary.
     </p>
 
-    <div class="upload-zone" id="uploadZone" tabindex="0" role="button">
-      <h2>Upload EFT Allocation Excel</h2>
-      <p>Drop file here or choose file. Works for EFT Allocation and EFT Allocation Annual.</p>
-      <p class="hint">Needed sheets: EFT Summary · Tax Summary · Combined Summary</p>
-      <div class="actions">
-        <button class="btn primary" type="button" id="browseBtn">Choose Excel file</button>
-        <button class="btn" type="button" id="clearBtn" disabled>Clear</button>
+    <!-- STEP 1: EFT -->
+    <div class="card">
+      <div class="section-title">1. EFT Allocation Excel</div>
+      <div class="upload-row">
+        <input id="file" type="file" accept=".xlsx,.xls,.xlsm" />
+        <button class="btn" id="runBtn" disabled>Run EFT checks</button>
+        <button class="btn ghost" id="clearBtn">Clear all</button>
       </div>
-      <input id="fileInput" type="file" accept=".xlsx,.xls" />
+      <div class="meta" id="meta">Waiting for EFT file…</div>
+      <div class="note" style="margin-top:8px">
+        Reads <strong>EFT Summary</strong>, <strong>Tax Summary</strong>, and <strong>Combined Summary</strong> only.
+      </div>
     </div>
 
-    <div class="error-box" id="errorBox"></div>
-
-    <div class="results" id="results">
-      <div class="meta" id="metaLine"></div>
-      <div class="toolbar">
-        <button class="btn primary" type="button" id="exportCsvBtn">Export CSV</button>
+    <div id="results" class="hidden">
+      <div class="card">
+        <div class="kpis">
+          <div class="kpi"><div class="l">Summary checks</div><div class="v" id="kChecks">—</div></div>
+          <div class="kpi"><div class="l">Passed</div><div class="v ok" id="kPass">—</div></div>
+          <div class="kpi"><div class="l">Failed</div><div class="v bad" id="kFail">—</div></div>
+          <div class="kpi"><div class="l">Club invoice mismatches</div><div class="v warn" id="kClub">—</div></div>
+        </div>
       </div>
-      <section class="kpis">
-        <div class="kpi neutral"><div class="label">Checks</div><div class="value" id="kpiTotal">0</div></div>
-        <div class="kpi ok"><div class="label">Match</div><div class="value" id="kpiMatch">0</div></div>
-        <div class="kpi bad"><div class="label">Mismatch</div><div class="value" id="kpiMis">0</div></div>
-        <div class="kpi ok"><div class="label">Match rate</div><div class="value" id="kpiRate">—</div></div>
-      </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Validation results</h2>
-          <span id="asOfLabel">—</span>
-        </div>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Check</th>
-                <th>Source A</th>
-                <th class="num">Value A</th>
-                <th>Source B</th>
-                <th class="num">Value B</th>
-                <th class="num">Difference</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="tbody"></tbody>
-          </table>
-        </div>
-      </section>
+      <div class="card">
+        <h2 class="section-title">Summary validations</h2>
+        <div class="checks" id="checks"></div>
+      </div>
 
-      <section class="panel" id="clubPanel" style="display:none">
-        <div class="panel-head">
-          <h2>Club-level Gross Invoice mismatches</h2>
-          <span id="clubScanStatus">—</span>
+      <!-- Collapsible club difference (EFT top vs recap) -->
+      <div class="card">
+        <div class="collapse-head" id="clubDiffToggle" title="Click to expand / collapse">
+          <div>
+            <h2 class="section-title" style="margin:0">Club-wise difference — Top Invoice vs Recap Gross</h2>
+            <div class="note" id="clubDiffHint">Click header to expand / collapse</div>
+          </div>
+          <div class="collapse-toggle" id="clubDiffChevron">▾</div>
         </div>
-        <div class="meta" id="clubExplain" style="padding: 0 14px 10px"></div>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Club</th>
-                <th class="num">Top Invoice Total</th>
-                <th class="num">Recap Gross Invoices</th>
-                <th class="num">EFT Gross Invoices</th>
-                <th class="num">Difference (Recap − Top)</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="clubTbody"></tbody>
-          </table>
+        <div class="collapse-body" id="clubDiffBody">
+          <div class="toolbar">
+            <button class="btn ghost" id="exportClubCsvBtn" disabled>Export club CSV</button>
+          </div>
+          <div style="overflow:auto; max-height:420px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Club</th>
+                  <th>Top Invoice</th>
+                  <th>Recap Gross</th>
+                  <th>EFT Gross</th>
+                  <th>Diff (Top − Recap)</th>
+                </tr>
+              </thead>
+              <tbody id="clubBody"></tbody>
+            </table>
+          </div>
+          <div class="meta" id="clubMeta"></div>
         </div>
-      </section>
+      </div>
+    </div>
 
-      <p class="note">Tolerance ± $0.02. Summary sheets load first; club scan runs only when Combined top Invoice Total ≠ Recap Gross Invoices.</p>
+    <!-- STEP 2: Royalty + PFAQ -->
+    <div class="card">
+      <div class="section-title">2. Royalty Report vs Tax Summary (Gross Invoices)</div>
+      <p class="note" style="margin-bottom:12px">
+        Club-by-club comparison uses <strong>Tax Summary only</strong>.
+        Gross Invoices ↔ Royalty “Dues Gross Invoice”;
+        Pre-Tax Gross Invoices ↔ Royalty “Pre Tax Dues”.
+        Differences that match the PFAQ upgraded club list are treated as <span class="pill expected">Expected</span>.
+      </p>
+      <div class="upload-grid">
+        <div class="upload-box">
+          <h3>Royalty Report Excel</h3>
+          <input id="royaltyFile" type="file" accept=".xlsx,.xls,.xlsm" />
+          <div class="meta" id="royaltyMeta">Waiting for Royalty file…</div>
+        </div>
+        <div class="upload-box">
+          <h3>Upgraded Club List (PFAQ)</h3>
+          <input id="pfaqFile" type="file" accept=".xlsx,.xls,.xlsm" />
+          <div class="meta" id="pfaqMeta">Required — marks expected invoice gaps</div>
+        </div>
+      </div>
+      <div class="upload-row" style="margin-top:12px">
+        <button class="btn" id="royaltyRunBtn" disabled>Run Royalty validation</button>
+        <button class="btn ghost" id="exportRoyaltyCsvBtn" disabled>Export royalty CSV</button>
+      </div>
+    </div>
+
+    <div id="royaltyResults" class="hidden">
+      <div class="card">
+        <div class="section-title">Royalty validation summary</div>
+        <div class="kpis">
+          <div class="kpi">
+            <div class="l">EFT clubs (Tax Summary)</div>
+            <div class="v" id="rkEft">—</div>
+            <div class="hint">Clubs present in EFT Allocation Annual · Tax Summary</div>
+          </div>
+          <div class="kpi">
+            <div class="l">Royalty clubs</div>
+            <div class="v" id="rkRoy">—</div>
+            <div class="hint">Clubs present in Royalty Report</div>
+          </div>
+          <div class="kpi">
+            <div class="l">In both files</div>
+            <div class="v ok" id="rkMatch">—</div>
+            <div class="hint">Clubs compared club-by-club for Gross / Pre-Tax</div>
+          </div>
+          <div class="kpi clickable" id="kpiAmtDiff" title="Click to view invoice gaps">
+            <div class="l">Invoice amount gaps</div>
+            <div class="v bad" id="rkDiff">—</div>
+            <div class="hint">Gross or Pre-Tax amounts differ between Tax &amp; Royalty</div>
+            <div class="nav">View gaps →</div>
+          </div>
+        </div>
+        <div class="kpis" style="margin-top:10px">
+          <div class="kpi clickable" id="kpiExpected" title="Click to view expected gaps">
+            <div class="l">Expected gaps (upgraded clubs)</div>
+            <div class="v expected" id="rkExp">—</div>
+            <div class="hint">Gaps on PFAQ / upgraded club list — treated as expected</div>
+            <div class="nav">View expected →</div>
+          </div>
+          <div class="kpi clickable" id="kpiUnexpected" title="Click to view unexpected gaps">
+            <div class="l">Unexpected gaps</div>
+            <div class="v bad" id="rkUnexp">—</div>
+            <div class="hint">Gaps NOT on upgraded list — need review</div>
+            <div class="nav">View unexpected →</div>
+          </div>
+          <div class="kpi clickable" id="kpiOnlyRoy" title="Click to view Royalty-only clubs">
+            <div class="l">Only in Royalty</div>
+            <div class="v warn" id="rkOnlyRoy">—</div>
+            <div class="hint">In Royalty Report, missing from EFT Tax Summary</div>
+            <div class="nav">View clubs →</div>
+          </div>
+          <div class="kpi clickable" id="kpiOnlyTax" title="Click to view EFT-only clubs">
+            <div class="l">Only in EFT</div>
+            <div class="v info" id="rkOnlyTax">—</div>
+            <div class="hint">In EFT Tax Summary, missing from Royalty Report</div>
+            <div class="nav">View clubs →</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="sectionAmtDiff">
+        <div class="legend">
+          <span class="pill expected">Expected (upgraded / PFAQ)</span>
+          <span class="pill bad">Unexpected difference</span>
+          <span class="pill warn">Only in Royalty</span>
+          <span class="pill info">Only in EFT</span>
+        </div>
+
+        <div class="collapse-head" data-collapse="amtDiff">
+          <div>
+            <h2 class="section-title" style="margin:0">Invoice amount gaps (Gross / Pre-Tax)</h2>
+            <div class="note">Clubs in both files where Tax Summary amounts differ from Royalty — sorted by club #</div>
+          </div>
+          <div class="collapse-toggle">▾</div>
+        </div>
+        <div class="collapse-body" id="amtDiffBody">
+          <div style="overflow:auto; max-height:480px; margin-top:8px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Flag</th>
+                  <th>Club</th>
+                  <th>Tax Gross</th>
+                  <th>Royalty Dues Gross</th>
+                  <th>Gross Diff</th>
+                  <th>Tax Pre-Tax</th>
+                  <th>Royalty Pre Tax Dues</th>
+                  <th>Pre-Tax Diff</th>
+                </tr>
+              </thead>
+              <tbody id="amtDiffBodyRows"></tbody>
+            </table>
+          </div>
+          <div class="meta" id="amtDiffMeta"></div>
+        </div>
+      </div>
+
+      <div class="card" id="sectionOnlyRoy">
+        <div class="collapse-head" data-collapse="onlyRoy">
+          <div>
+            <h2 class="section-title" style="margin:0">Clubs only in Royalty Report</h2>
+            <div class="note">Present in Royalty, missing from EFT — with Upgraded List NOTE / Status when available</div>
+          </div>
+          <div class="collapse-toggle">▾</div>
+        </div>
+        <div class="collapse-body" id="onlyRoyBody">
+          <div style="overflow:auto; max-height:420px; margin-top:8px">
+            <table>
+              <thead>
+                <tr>
+                  <th>ABC #</th>
+                  <th>Club Name</th>
+                  <th>Dues Gross</th>
+                  <th>Pre Tax Dues</th>
+                  <th>On upgraded list?</th>
+                  <th>NOTE</th>
+                  <th>Club Status</th>
+                  <th>Upgrade Date</th>
+                </tr>
+              </thead>
+              <tbody id="onlyRoyRows"></tbody>
+            </table>
+          </div>
+          <div class="meta" id="onlyRoyMeta"></div>
+        </div>
+      </div>
+
+      <div class="card" id="sectionOnlyTax">
+        <div class="collapse-head" data-collapse="onlyTax">
+          <div>
+            <h2 class="section-title" style="margin:0">Clubs only in EFT (Tax Summary)</h2>
+            <div class="note">Present in Tax Summary, missing from Royalty — sorted by club #</div>
+          </div>
+          <div class="collapse-toggle">▾</div>
+        </div>
+        <div class="collapse-body" id="onlyTaxBody">
+          <div style="overflow:auto; max-height:360px; margin-top:8px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Flag</th>
+                  <th>Club</th>
+                  <th>Tax Gross</th>
+                  <th>Tax Pre-Tax</th>
+                </tr>
+              </thead>
+              <tbody id="onlyTaxRows"></tbody>
+            </table>
+          </div>
+          <div class="meta" id="onlyTaxMeta"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
     const TOL = 0.02;
-    let lastChecks = [];
-    let lastMeta = {};
-    let lastClubRows = [];
-    let lastFileBuffer = null;
+    const $ = (id) => document.getElementById(id);
 
-    const uploadZone = document.getElementById("uploadZone");
-    const fileInput = document.getElementById("fileInput");
-    const browseBtn = document.getElementById("browseBtn");
-    const clearBtn = document.getElementById("clearBtn");
-    const errorBox = document.getElementById("errorBox");
-    const results = document.getElementById("results");
-    const clubPanel = document.getElementById("clubPanel");
-    const clubTbody = document.getElementById("clubTbody");
-    const clubScanStatus = document.getElementById("clubScanStatus");
-    const clubExplain = document.getElementById("clubExplain");
+    let fileBuffer = null;
+    let fileName = "";
+    let clubMismatchRows = [];
+    let taxClubsByCode = null; // Map<code, {club, gross, pretax}>
+    let royaltyByCode = null;
+    let pfaqByCode = new Map(); // code -> {note, status, upgradeDate, onList, ...}
 
-    function money(n) {
-      if (n === null || n === undefined || Number.isNaN(n)) return "—";
-      const abs = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      return n < 0 ? `($${abs})` : `$${abs}`;
+    function pfaqHas(code) {
+      return pfaqByCode.has(code);
     }
-    function num(v) {
-      if (v === null || v === undefined || v === "") return null;
+    let royaltyCompareRows = []; // for CSV export
+
+    const money = (n) =>
+      Number(n || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
+
+    const near = (a, b, tol = TOL) => Math.abs(Number(a || 0) - Number(b || 0)) <= tol;
+
+    function cellNum(row, idx) {
+      const v = row?.[idx];
+      if (v === null || v === undefined || v === "") return 0;
       if (typeof v === "number" && Number.isFinite(v)) return v;
       const s = String(v).replace(/[$,\s]/g, "").replace(/^\((.*)\)$/, "-$1");
       const n = Number(s);
-      return Number.isFinite(n) ? n : null;
+      return Number.isFinite(n) ? n : 0;
     }
-    function showError(msg) {
-      errorBox.textContent = msg;
-      errorBox.classList.add("show");
+
+    function normalizeClubCode(v) {
+      if (v == null || v === "") return "";
+      if (typeof v === "number" && Number.isFinite(v)) return String(Math.trunc(v));
+      const s = String(v).trim();
+      // Club rows look like "00001 - NAME" / "1 - NAME". Ignore dates/labels.
+      const m = s.match(/^0*(\d+)\b/);
+      if (m) return String(parseInt(m[1], 10));
+      return "";
     }
-    function clearError() {
-      errorBox.textContent = "";
-      errorBox.classList.remove("show");
+
+    function findSheet(wb, candidates) {
+      const names = wb.SheetNames;
+      for (const c of candidates) {
+        const hit = names.find((n) => n.trim().toLowerCase() === c.toLowerCase());
+        if (hit) return hit;
+      }
+      for (const c of candidates) {
+        const hit = names.find((n) => n.toLowerCase().includes(c.toLowerCase()));
+        if (hit) return hit;
+      }
+      return null;
     }
-    function sheetToRows(wb, name) {
-      const sheet = wb.Sheets[name];
-      if (!sheet) throw new Error(`Missing sheet: "${name}"`);
-      return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
+
+    function sheetRows(wb, name) {
+      return XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: null, raw: true });
     }
+
     function findRow(rows, pred) {
       for (let i = 0; i < rows.length; i++) {
-        const c0 = rows[i] && rows[i][0];
+        const c0 = rows[i]?.[0];
         if (c0 != null && pred(String(c0).trim())) return { index: i, row: rows[i] };
       }
       return null;
     }
-    function findGrandTotal(rows) {
-      return findRow(rows, (s) => /^grand\s*total$/i.test(s));
+
+    function parseEftSummary(rows) {
+      // EFT Summary Grand Total:
+      // col 10 Gross Invoices Total Amount
+      // col 21 Delinquent Recovery Total Amount
+      // col 31 Total Collected Total Amount
+      const gt = findRow(rows, (s) => /^grand\s*total$/i.test(s));
+      if (!gt) throw new Error('EFT Summary: "Grand Total" row not found');
+      return {
+        invoice: cellNum(gt.row, 10),
+        delinquent: cellNum(gt.row, 21),
+        totalCollected: cellNum(gt.row, 31),
+      };
     }
-    function labelIncludes(s, parts) {
-      const low = s.toLowerCase();
-      return parts.every((p) => low.includes(p.toLowerCase()));
+
+    function parseTaxSummary(rows) {
+      // Tax Summary layout:
+      // col 5  = Gross Invoices Total (incl. tax)
+      // col 20 = Pre-Tax Gross Invoices Total (Invoice side of Total)
+      const GROSS_COL = 5;
+      const PRETAX_COL = 20;
+      let gross = 0, pretax = 0;
+      const clubs = [];
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const club = String(r?.[0] ?? "").trim();
+        if (!club) continue;
+        const low = club.toLowerCase();
+        if (low === "total" || low === "grand total") {
+          gross = cellNum(r, GROSS_COL);
+          pretax = cellNum(r, PRETAX_COL);
+          continue;
+        }
+        const code = normalizeClubCode(club);
+        if (!code) continue; // skip date/header rows
+        clubs.push({
+          club,
+          code,
+          gross: cellNum(r, GROSS_COL),
+          pretax: cellNum(r, PRETAX_COL),
+        });
+      }
+      return { gross, pretax, clubs };
     }
 
-    function extract(wb) {
-      const eft = sheetToRows(wb, "EFT Summary");
-      const tax = sheetToRows(wb, "Tax Summary");
-      const comb = sheetToRows(wb, "Combined Summary");
+    function parseCombinedSummary(rows) {
+      // Combined Summary is a high-level sheet (no club table).
+      // Top dues: row "Invoices for ..." → Total Amount col 10
+      // Collection Success Recap: Gross / Delinquent / Total Collected in Cycle → Total col 5
+      const dues = findRow(rows, (s) => /^invoices for /i.test(s));
+      const topInvoice = dues ? cellNum(dues.row, 10) : 0;
 
-      const asOf =
-        (eft[3] && eft[3][0]) ||
-        (comb[1] && comb[1][0]) ||
-        "As of date not found";
-
-      const eftGT = findGrandTotal(eft);
-      const taxGT = findGrandTotal(tax);
-      if (!eftGT) throw new Error('EFT Summary: "Grand Total" row not found');
-      if (!taxGT) throw new Error('Tax Summary: "Grand Total" row not found');
-
-      // EFT Grand Total columns (1-indexed in Excel):
-      // 11 Gross Invoices Total Amount
-      // 22 Delinquent Recovery Total Amount
-      // 32 Total Collected Total Amount
-      const eftGross = num(eftGT.row[10]);
-      const eftDelinq = num(eftGT.row[21]);
-      const eftCollected = num(eftGT.row[31]);
-
-      // Tax Grand Total:
-      // 6 Gross Invoices Total (including tax)
-      const taxGross = num(taxGT.row[5]);
-
-      // Combined top invoice table "Invoices for ..." Total Amount col 11 (index 10)
-      const dues = findRow(comb, (s) => /^invoices for /i.test(s));
-      const combTopGross = dues ? num(dues.row[10]) : null;
-
-      // Collection Success Recap section
-      const recap = findRow(comb, (s) => labelIncludes(s, ["collection success recap"]));
+      const recap = findRow(rows, (s) => s.toLowerCase().includes("collection success recap"));
       if (!recap) throw new Error('Combined Summary: "Collection Success Recap" not found');
 
-      const grossRecap = findRow(comb.slice(recap.index), (s) => /^gross invoices$/i.test(s));
-      const delinqRecap = findRow(comb.slice(recap.index), (s) => /^delinquent recovery$/i.test(s));
-      const collectedRecap = findRow(comb.slice(recap.index), (s) => /^total collected in cycle$/i.test(s));
+      const slice = rows.slice(recap.index);
+      const grossRecap = findRow(slice, (s) => /^gross invoices$/i.test(s));
+      const delinqRecap = findRow(slice, (s) => /^delinquent recovery$/i.test(s));
+      const collectedRecap = findRow(slice, (s) => /^total collected in cycle$/i.test(s));
 
-      const combRecapGross = grossRecap ? num(grossRecap.row[5]) : null; // Total col (index 5 in recap tables)
-      const combRecapDelinq = delinqRecap ? num(delinqRecap.row[5]) : null;
-      const combRecapCollected = collectedRecap ? num(collectedRecap.row[5]) : null;
-
-      // Also note Combined sheet sometimes puts comparison value in col 7 (index 6)
       return {
-        asOf: String(asOf),
-        values: {
-          eftGross,
-          taxGross,
-          combTopGross,
-          combRecapGross,
-          eftDelinq,
-          combRecapDelinq,
-          eftCollected,
-          combRecapCollected,
-        },
+        topInvoice,
+        recapGross: grossRecap ? cellNum(grossRecap.row, 5) : 0,
+        recapDelinquent: delinqRecap ? cellNum(delinqRecap.row, 5) : 0,
+        recapTotalCollected: collectedRecap ? cellNum(collectedRecap.row, 5) : 0,
       };
     }
 
-    function buildChecks(values) {
-      const mk = (name, aLabel, aVal, bLabel, bVal) => {
-        const a = aVal;
-        const b = bVal;
-        const okA = a !== null && b !== null;
-        const diff = okA ? Math.round((a - b) * 100) / 100 : null;
-        const status = okA && Math.abs(diff) <= TOL ? "Match" : "Mismatch";
-        return {
-          name,
-          aLabel,
-          aVal: a,
-          bLabel,
-          bVal: b,
-          diff,
-          status: okA ? status : "Mismatch",
-        };
-      };
-
-      return [
-        mk(
-          "Gross Invoices: EFT Summary vs Tax Summary",
-          "EFT Summary · Grand Total · Gross Invoices",
-          values.eftGross,
-          "Tax Summary · Grand Total · Gross Invoices",
-          values.taxGross
-        ),
-        mk(
-          "Gross Invoices: Combined top Invoice Total vs EFT",
-          "Combined Summary · Dues Invoices Total",
-          values.combTopGross,
-          "EFT Summary · Gross Invoices Total",
-          values.eftGross
-        ),
-        mk(
-          "Gross Invoices: Combined top Invoice Total vs Tax",
-          "Combined Summary · Dues Invoices Total",
-          values.combTopGross,
-          "Tax Summary · Gross Invoices Total",
-          values.taxGross
-        ),
-        mk(
-          "Gross Invoices: Collection Success Recap vs EFT",
-          "Combined Summary · Recap · Gross Invoices",
-          values.combRecapGross,
-          "EFT Summary · Gross Invoices Total",
-          values.eftGross
-        ),
-        mk(
-          "Gross Invoices: Collection Success Recap vs Tax",
-          "Combined Summary · Recap · Gross Invoices",
-          values.combRecapGross,
-          "Tax Summary · Gross Invoices Total",
-          values.taxGross
-        ),
-        mk(
-          "Delinquent Recovery: Recap vs EFT Summary",
-          "Combined Summary · Recap · Delinquent Recovery",
-          values.combRecapDelinq,
-          "EFT Summary · Delinquent Recovery Total",
-          values.eftDelinq
-        ),
-        mk(
-          "Total Collected in Cycle: Recap vs EFT Summary",
-          "Combined Summary · Recap · Total Collected in Cycle",
-          values.combRecapCollected,
-          "EFT Summary · Total Collected",
-          values.eftCollected
-        ),
-      ];
-    }
-
-    function buildEftGrossMap(eftRows) {
-      const map = new Map();
-      for (let i = 5; i < eftRows.length; i++) {
-        const row = eftRows[i];
-        if (!row || row[0] == null) continue;
-        const name = String(row[0]).trim();
-        if (/^grand\s*total$/i.test(name)) continue;
-        const gross = num(row[10]);
-        if (gross === null) continue;
-        // key by club code prefix before " - "
-        const code = name.split(" - ")[0].trim();
-        map.set(code, { name, gross });
-      }
-      return map;
-    }
-
-    function extractClubMetrics(rows) {
-      let clubName = rows[0] && rows[0][0] != null ? String(rows[0][0]).trim() : "";
+    function extractClubSheetMetrics(rows) {
+      let clubName = rows[0]?.[0] != null ? String(rows[0][0]).trim() : "";
       let topInvoice = null;
       let recapGross = null;
       let inRecap = false;
@@ -408,39 +509,36 @@
         if (!row || row[0] == null) continue;
         const label = String(row[0]).trim();
         const low = label.toLowerCase();
-        if (low.startsWith("invoices for")) {
-          topInvoice = num(row[10]);
-        }
+        if (low.startsWith("invoices for")) topInvoice = cellNum(row, 10);
         if (low === "collection success recap") inRecap = true;
         if (inRecap && low === "gross invoices") {
-          recapGross = num(row[5]);
+          recapGross = cellNum(row, 5);
           break;
         }
       }
       return { clubName, topInvoice, recapGross };
     }
 
-    function findClubMismatches(wb, eftMap) {
+    function findClubMismatches(wb, eftGrossByCode) {
       const skip = new Set(["Legend", "EFT Summary", "Tax Summary", "Combined Summary"]);
       const mismatches = [];
       for (const sheetName of wb.SheetNames) {
         if (skip.has(sheetName)) continue;
-        // club sheets are usually numeric codes
         if (!/^\d+$/.test(String(sheetName).trim())) continue;
-        const rows = sheetToRows(wb, sheetName);
-        const m = extractClubMetrics(rows);
-        const eft = eftMap.get(String(sheetName).trim());
+        const rows = sheetRows(wb, sheetName);
+        const m = extractClubSheetMetrics(rows);
+        const codeRaw = String(sheetName).trim();
+        const codeNorm = normalizeClubCode(codeRaw);
+        const eftGross = eftGrossByCode.get(codeNorm) ?? eftGrossByCode.get(codeRaw) ?? 0;
         const top = m.topInvoice == null ? 0 : m.topInvoice;
-        const recap = m.recapGross == null ? (eft ? eft.gross : null) : m.recapGross;
-        if (recap === null) continue;
-        const diff = Math.round((recap - top) * 100) / 100;
+        const recap = m.recapGross == null ? eftGross : m.recapGross;
+        const diff = Math.round((top - recap) * 100) / 100;
         if (Math.abs(diff) <= TOL) continue;
         mismatches.push({
-          club: m.clubName || (eft ? eft.name : sheetName),
-          code: String(sheetName).trim(),
+          club: m.clubName || codeRaw,
           topInvoice: top,
           recapGross: recap,
-          eftGross: eft ? eft.gross : null,
+          eftGross,
           diff,
         });
       }
@@ -448,198 +546,711 @@
       return mismatches;
     }
 
-    function renderClubs(clubRows, summaryDiff) {
-      lastClubRows = clubRows;
-      if (!clubRows.length) {
-        clubPanel.style.display = "none";
-        return;
-      }
-      clubPanel.style.display = "block";
-      const sumDiff = Math.round(clubRows.reduce((s, r) => s + r.diff, 0) * 100) / 100;
-      clubScanStatus.textContent = `${clubRows.length} club(s) with issue`;
-      clubExplain.textContent =
-        `Combined top Invoice Total vs Recap Gross gap is ${money(summaryDiff)}. ` +
-        `Below clubs have Top Invoice Total ≠ Recap Gross Invoices. ` +
-        `Sum of club differences = ${money(sumDiff)}.`;
+    function parseRoyalty(wb) {
+      const sheetName =
+        findSheet(wb, ["Export Sheet", "Export", "Royalty"]) || wb.SheetNames[0];
+      const rows = sheetRows(wb, sheetName);
+      if (!rows.length) throw new Error("Royalty sheet is empty");
 
-      clubTbody.innerHTML = clubRows
-        .map(
-          (r) => `
-        <tr class="mismatch">
-          <td>${r.club}</td>
-          <td class="num">${money(r.topInvoice)}</td>
-          <td class="num">${money(r.recapGross)}</td>
-          <td class="num">${money(r.eftGross)}</td>
-          <td class="num">${money(r.diff)}</td>
-          <td><span class="badge mismatch">Mismatch</span></td>
-        </tr>`
-        )
-        .join("");
-    }
-
-    function render(checks, meta) {
-      lastChecks = checks;
-      lastMeta = meta;
-      results.classList.add("show");
-      const match = checks.filter((c) => c.status === "Match").length;
-      const mis = checks.length - match;
-      document.getElementById("kpiTotal").textContent = String(checks.length);
-      document.getElementById("kpiMatch").textContent = String(match);
-      document.getElementById("kpiMis").textContent = String(mis);
-      document.getElementById("kpiRate").textContent = checks.length
-        ? ((match / checks.length) * 100).toFixed(1) + "%"
-        : "—";
-      document.getElementById("asOfLabel").textContent = meta.asOf;
-      document.getElementById("metaLine").textContent = `File: ${meta.fileName} · Sheets parsed: EFT Summary, Tax Summary, Combined Summary`;
-
-      document.getElementById("tbody").innerHTML = checks
-        .map(
-          (c) => `
-        <tr class="${c.status === "Match" ? "match" : "mismatch"}">
-          <td>${c.name}</td>
-          <td>${c.aLabel}</td>
-          <td class="num">${money(c.aVal)}</td>
-          <td>${c.bLabel}</td>
-          <td class="num">${money(c.bVal)}</td>
-          <td class="num">${c.diff === null ? "—" : money(c.diff)}</td>
-          <td><span class="badge ${c.status === "Match" ? "match" : "mismatch"}">${c.status}</span></td>
-        </tr>`
-        )
-        .join("");
-    }
-
-    async function handleFile(file) {
-      clearError();
-      if (!file) return;
-      try {
-        const buf = await file.arrayBuffer();
-        lastFileBuffer = buf;
-        lastClubRows = [];
-        clubPanel.style.display = "none";
-
-        const wbSummary = XLSX.read(buf, {
-          type: "array",
-          sheets: ["EFT Summary", "Tax Summary", "Combined Summary"],
-          cellDates: true,
-        });
-        const extracted = extract(wbSummary);
-        const checks = buildChecks(extracted.values);
-        render(checks, { asOf: extracted.asOf, fileName: file.name });
-        clearBtn.disabled = false;
-
-        const needClubScan = checks.some(
-          (c) =>
-            c.status === "Mismatch" &&
-            c.name.includes("Combined top Invoice Total")
+      const header = (rows[0] || []).map((h) => String(h ?? "").trim().toLowerCase());
+      const idx = {
+        abc: header.findIndex((h) => h === "abc #" || h === "abc#" || h.includes("abc #")),
+        name: header.findIndex((h) => h === "club name" || h.includes("club name")),
+        gross: header.findIndex((h) => h === "dues gross invoice" || h.includes("dues gross invoice")),
+        pretax: header.findIndex((h) => h === "pre tax dues" || h.includes("pre tax dues")),
+      };
+      if (idx.abc < 0 || idx.gross < 0 || idx.pretax < 0) {
+        throw new Error(
+          "Royalty headers not found. Need ABC #, Dues Gross Invoice, Pre Tax Dues. Got: " +
+            header.filter(Boolean).slice(0, 12).join(", ")
         );
-
-        if (!needClubScan) return;
-
-        clubPanel.style.display = "block";
-        clubScanStatus.textContent = "Scanning clubs…";
-        clubExplain.textContent =
-          "Loading club sheets to locate where Top Invoice Total differs from Recap Gross Invoices.";
-        clubTbody.innerHTML = "";
-
-        // Allow UI to paint before heavy parse
-        await new Promise((r) => setTimeout(r, 50));
-
-        const wbFull = XLSX.read(buf, { type: "array", cellDates: true });
-        const eftRows = sheetToRows(wbFull, "EFT Summary");
-        const eftMap = buildEftGrossMap(eftRows);
-        const clubs = findClubMismatches(wbFull, eftMap);
-        const summaryDiff =
-          extracted.values.combRecapGross != null && extracted.values.combTopGross != null
-            ? Math.round((extracted.values.combRecapGross - extracted.values.combTopGross) * 100) / 100
-            : null;
-        renderClubs(clubs, summaryDiff);
-      } catch (err) {
-        showError(err.message || "Failed to parse Excel file.");
-        results.classList.remove("show");
       }
+
+      const map = new Map();
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const code = normalizeClubCode(r?.[idx.abc]);
+        if (!code) continue;
+        map.set(code, {
+          code,
+          abc: r?.[idx.abc],
+          name: idx.name >= 0 ? String(r?.[idx.name] ?? "") : "",
+          gross: cellNum(r, idx.gross),
+          pretax: cellNum(r, idx.pretax),
+        });
+      }
+      return { sheetName, map };
     }
 
-    function exportCsv() {
-      if (!lastChecks.length) return;
-      const rows = [
-        ["Check", "Source A", "Value A", "Source B", "Value B", "Difference", "Status"],
-        ...lastChecks.map((c) => [
-          c.name,
-          c.aLabel,
-          c.aVal,
-          c.bLabel,
-          c.bVal,
-          c.diff,
-          c.status,
-        ]),
-      ];
-      if (lastClubRows.length) {
-        rows.push([]);
-        rows.push(["Club mismatches (Top Invoice vs Recap Gross)"]);
-        rows.push([
-          "Club",
-          "Top Invoice Total",
-          "Recap Gross Invoices",
-          "EFT Gross Invoices",
-          "Difference (Recap - Top)",
-          "Status",
-        ]);
-        for (const r of lastClubRows) {
-          rows.push([r.club, r.topInvoice, r.recapGross, r.eftGross, r.diff, "Mismatch"]);
+    function formatUpgradeDate(v) {
+      if (v == null || v === "") return "—";
+      if (v instanceof Date && !Number.isNaN(v.getTime())) {
+        return v.toISOString().slice(0, 10);
+      }
+      // Excel serial date
+      if (typeof v === "number" && Number.isFinite(v)) {
+        const d = XLSX.SSF.parse_date_code(v);
+        if (d) {
+          const mm = String(d.m).padStart(2, "0");
+          const dd = String(d.d).padStart(2, "0");
+          return `${d.y}-${mm}-${dd}`;
         }
       }
-      const csv = rows
-        .map((r) =>
-          r
-            .map((cell) => {
-              const s = cell === null || cell === undefined ? "" : String(cell);
-              return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-            })
-            .join(",")
-        )
-        .join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `eft-allocation-annual-match_${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      const s = String(v).trim();
+      return s || "—";
     }
 
-    browseBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      fileInput.click();
-    });
-    uploadZone.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
-    clearBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      lastChecks = [];
-      lastClubRows = [];
-      lastFileBuffer = null;
-      results.classList.remove("show");
-      clubPanel.style.display = "none";
-      clearError();
-      fileInput.value = "";
-      clearBtn.disabled = true;
-    });
-    document.getElementById("exportCsvBtn").addEventListener("click", exportCsv);
+    function parsePfaq(wb) {
+      const preferred = wb.SheetNames.find((n) =>
+        n.toLowerCase().includes("upgraded club list")
+      );
+      const sheetName = preferred || findSheet(wb, ["PF Upgraded", "Club List"]) || wb.SheetNames[0];
+      const rows = sheetRows(wb, sheetName);
+      const header = (rows[0] || []).map((h) => String(h ?? "").trim().toLowerCase());
+      const idx = {
+        club: header.findIndex((h) => h === "club number" || h === "club #"),
+        name: header.findIndex((h) => h === "club name"),
+        company: header.findIndex((h) => h.includes("company")),
+        note: header.findIndex((h) => h === "note" || h === "notes" || h.includes("note")),
+        upgrade: header.findIndex((h) => h.includes("upgrade")),
+        onRr: header.findIndex((h) => h === "on rr" || h.includes("on rr")),
+      };
+      if (idx.club < 0) {
+        idx.club = header.findIndex((h) => h.includes("club") && h.includes("number"));
+      }
+      if (idx.club < 0) idx.club = 0;
 
-    ["dragenter", "dragover"].forEach((evt) => {
-      uploadZone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        uploadZone.classList.add("dragover");
+      const map = new Map();
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const code = normalizeClubCode(r?.[idx.club]);
+        if (!code) continue;
+        map.set(code, {
+          code,
+          onList: true,
+          name: idx.name >= 0 ? String(r?.[idx.name] ?? "") : "",
+          company: idx.company >= 0 ? String(r?.[idx.company] ?? "") : "",
+          note: idx.note >= 0 ? String(r?.[idx.note] ?? "").trim() : "",
+          upgradeDate: idx.upgrade >= 0 ? formatUpgradeDate(r?.[idx.upgrade]) : "—",
+          status: "",
+        });
+      }
+
+      // Enrich with tier file Status when present in same workbook
+      const tierName = wb.SheetNames.find((n) => n.toLowerCase().includes("tier"));
+      if (tierName) {
+        const trows = sheetRows(wb, tierName);
+        const th = (trows[0] || []).map((h) => String(h ?? "").trim().toLowerCase());
+        const posIdx = th.findIndex((h) => h.includes("pos club") || h === "club name: pos club id");
+        const pfIdx = th.findIndex((h) => h.includes("pf club"));
+        const statusIdx = th.findIndex((h) => h.includes("status"));
+        if (statusIdx >= 0) {
+          for (let i = 1; i < trows.length; i++) {
+            const r = trows[i];
+            const code =
+              normalizeClubCode(posIdx >= 0 ? r?.[posIdx] : null) ||
+              normalizeClubCode(pfIdx >= 0 ? r?.[pfIdx] : null);
+            if (!code) continue;
+            const status = String(r?.[statusIdx] ?? "").trim();
+            if (map.has(code)) {
+              map.get(code).status = status;
+            }
+          }
+        }
+      }
+
+      return { sheetName, map };
+    }
+
+    function renderCheck({ name, leftLabel, leftVal, rightLabel, rightVal }) {
+      const pass = near(leftVal, rightVal);
+      return `
+        <div class="check">
+          <div class="name">${name}</div>
+          <div><span class="note">${leftLabel}</span><div class="money">${money(leftVal)}</div></div>
+          <div><span class="note">${rightLabel}</span><div class="money">${money(rightVal)}</div></div>
+          <div class="money">${money((leftVal || 0) - (rightVal || 0))}</div>
+          <div><span class="pill ${pass ? "ok" : "bad"}">${pass ? "PASS" : "FAIL"}</span></div>
+        </div>`;
+    }
+
+    /* ---------- Collapse helpers ---------- */
+    function setCollapsed(bodyEl, chevronEl, collapsed) {
+      bodyEl.classList.toggle("closed", collapsed);
+      if (chevronEl) chevronEl.textContent = collapsed ? "▸" : "▾";
+    }
+
+    $("clubDiffToggle").addEventListener("click", () => {
+      const body = $("clubDiffBody");
+      const next = !body.classList.contains("closed");
+      setCollapsed(body, $("clubDiffChevron"), next);
+    });
+
+    document.querySelectorAll(".collapse-head[data-collapse]").forEach((head) => {
+      head.addEventListener("click", () => {
+        const key = head.getAttribute("data-collapse");
+        const body = $(key + "Body");
+        const chevron = head.querySelector(".collapse-toggle");
+        if (!body) return;
+        setCollapsed(body, chevron, !body.classList.contains("closed"));
       });
     });
-    ["dragleave", "drop"].forEach((evt) => {
-      uploadZone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        uploadZone.classList.remove("dragover");
-      });
+
+    /* ---------- EFT file ---------- */
+    $("file").addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      $("meta").textContent = `Loading ${file.name}…`;
+      $("runBtn").disabled = true;
+      try {
+        fileBuffer = await file.arrayBuffer();
+        fileName = file.name;
+        // Peek sheet count without parsing all club sheets
+        const peek = XLSX.read(fileBuffer, { type: "array", bookSheets: true });
+        $("meta").textContent = `${file.name} · sheets: ${peek.SheetNames.length}`;
+        $("runBtn").disabled = false;
+      } catch (err) {
+        fileBuffer = null;
+        $("meta").textContent = "Failed to read file: " + err.message;
+      }
     });
-    uploadZone.addEventListener("drop", (e) => {
-      const f = e.dataTransfer.files && e.dataTransfer.files[0];
-      if (f) handleFile(f);
+
+    $("runBtn").addEventListener("click", async () => {
+      if (!fileBuffer) return;
+      try {
+        $("runBtn").disabled = true;
+        $("meta").textContent = `${fileName} · running summary checks…`;
+
+        // Fast path: only the 3 summary sheets
+        const wbSummary = XLSX.read(fileBuffer, {
+          type: "array",
+          sheets: ["EFT Summary", "Tax Summary", "Combined Summary"],
+        });
+        const eftName = findSheet(wbSummary, ["EFT Summary"]);
+        const taxName = findSheet(wbSummary, ["Tax Summary"]);
+        const combName = findSheet(wbSummary, ["Combined Summary"]);
+        if (!eftName || !taxName || !combName) {
+          throw new Error("Required sheets: EFT Summary, Tax Summary, Combined Summary");
+        }
+
+        const eft = parseEftSummary(sheetRows(wbSummary, eftName));
+        const tax = parseTaxSummary(sheetRows(wbSummary, taxName));
+        const comb = parseCombinedSummary(sheetRows(wbSummary, combName));
+
+        taxClubsByCode = new Map();
+        for (const c of tax.clubs) {
+          if (c.code) taxClubsByCode.set(c.code, c);
+        }
+
+        const checks = [
+          {
+            name: "Gross Invoices: EFT Summary vs Tax Summary",
+            leftLabel: "EFT Grand Total · Gross Invoices",
+            leftVal: eft.invoice,
+            rightLabel: "Tax Grand Total · Gross Invoices",
+            rightVal: tax.gross,
+          },
+          {
+            name: "Combined top Invoice vs EFT",
+            leftLabel: "Combined · Dues Invoices Total",
+            leftVal: comb.topInvoice,
+            rightLabel: "EFT Gross Invoices",
+            rightVal: eft.invoice,
+          },
+          {
+            name: "Combined top Invoice vs Tax Gross",
+            leftLabel: "Combined · Dues Invoices Total",
+            leftVal: comb.topInvoice,
+            rightLabel: "Tax Gross Invoices",
+            rightVal: tax.gross,
+          },
+          {
+            name: "Collection Success Recap Gross vs EFT",
+            leftLabel: "Recap · Gross Invoices",
+            leftVal: comb.recapGross,
+            rightLabel: "EFT Gross Invoices",
+            rightVal: eft.invoice,
+          },
+          {
+            name: "Collection Success Recap Gross vs Tax",
+            leftLabel: "Recap · Gross Invoices",
+            leftVal: comb.recapGross,
+            rightLabel: "Tax Gross Invoices",
+            rightVal: tax.gross,
+          },
+          {
+            name: "Delinquent Recovery Recap vs EFT",
+            leftLabel: "Recap · Delinquent Recovery",
+            leftVal: comb.recapDelinquent,
+            rightLabel: "EFT Delinquent Recovery",
+            rightVal: eft.delinquent,
+          },
+          {
+            name: "Total Collected in Cycle Recap vs EFT",
+            leftLabel: "Recap · Total Collected in Cycle",
+            leftVal: comb.recapTotalCollected,
+            rightLabel: "EFT Total Collected",
+            rightVal: eft.totalCollected,
+          },
+        ];
+
+        const passCount = checks.filter((c) => near(c.leftVal, c.rightVal)).length;
+        $("checks").innerHTML = checks.map(renderCheck).join("");
+        $("kChecks").textContent = String(checks.length);
+        $("kPass").textContent = String(passCount);
+        $("kFail").textContent = String(checks.length - passCount);
+
+        clubMismatchRows = [];
+        $("kClub").textContent = "…";
+        $("clubBody").innerHTML =
+          `<tr><td colspan="5" class="note">Checking whether club scan is needed…</td></tr>`;
+        $("results").classList.remove("hidden");
+        setCollapsed($("clubDiffBody"), $("clubDiffChevron"), false);
+
+        // Club scan only when Combined top ≠ Recap Gross (known root-cause path)
+        if (!near(comb.topInvoice, comb.recapGross)) {
+          $("clubMeta").textContent = "Scanning club sheets for Top Invoice vs Recap gaps…";
+          await new Promise((r) => setTimeout(r, 40));
+          const wbFull = XLSX.read(fileBuffer, { type: "array" });
+          const eftRows = sheetRows(wbFull, eftName);
+          const eftGrossByCode = new Map();
+          for (let i = 5; i < eftRows.length; i++) {
+            const row = eftRows[i];
+            const name = String(row?.[0] ?? "").trim();
+            if (!name || /^grand\s*total$/i.test(name)) continue;
+            const code = normalizeClubCode(name);
+            if (!code) continue;
+            eftGrossByCode.set(code, cellNum(row, 10));
+          }
+          clubMismatchRows = findClubMismatches(wbFull, eftGrossByCode);
+          clubMismatchRows.sort((a, b) => {
+            const ca = normalizeClubCode(a.club) || a.club;
+            const cb = normalizeClubCode(b.club) || b.club;
+            const na = Number(ca);
+            const nb = Number(cb);
+            if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+            return String(ca).localeCompare(String(cb), undefined, { numeric: true });
+          });
+        }
+
+        $("kClub").textContent = String(clubMismatchRows.length);
+        $("clubBody").innerHTML = clubMismatchRows.length
+          ? clubMismatchRows
+              .map(
+                (r) => `<tr>
+              <td>${r.club}</td>
+              <td class="money">${money(r.topInvoice)}</td>
+              <td class="money">${money(r.recapGross)}</td>
+              <td class="money">${money(r.eftGross)}</td>
+              <td class="money fail">${money(r.diff)}</td>
+            </tr>`
+              )
+              .join("")
+          : `<tr><td colspan="5" class="pass">No club-level Top Invoice vs Recap mismatches.</td></tr>`;
+
+        $("clubMeta").textContent = clubMismatchRows.length
+          ? `${clubMismatchRows.length} club(s) · total gap ${money(
+              clubMismatchRows.reduce((s, r) => s + r.diff, 0)
+            )} · Combined top − Recap = ${money(comb.topInvoice - comb.recapGross)}`
+          : near(comb.topInvoice, comb.recapGross)
+            ? "Combined top Invoice matches Recap Gross — club scan skipped."
+            : "All good on club Top vs Recap.";
+        $("exportClubCsvBtn").disabled = clubMismatchRows.length === 0;
+        setCollapsed($("clubDiffBody"), $("clubDiffChevron"), clubMismatchRows.length === 0);
+
+        updateRoyaltyRunEnabled();
+        $("meta").textContent = `${fileName} · Tax clubs: ${tax.clubs.length} · checks done`;
+        $("runBtn").disabled = false;
+      } catch (err) {
+        $("runBtn").disabled = false;
+        alert(err.message || String(err));
+      }
+    });
+
+    $("exportClubCsvBtn").addEventListener("click", () => {
+      if (!clubMismatchRows.length) return;
+      const header = ["Club", "Top Invoice", "Recap Gross", "EFT Gross", "Diff (Top-Recap)"];
+      const lines = [header.join(",")].concat(
+        clubMismatchRows.map((r) =>
+          [
+            `"${String(r.club).replaceAll('"', '""')}"`,
+            r.topInvoice,
+            r.recapGross,
+            r.eftGross,
+            r.diff,
+          ].join(",")
+        )
+      );
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "eft-allocation-club-mismatches.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    function updateRoyaltyRunEnabled() {
+      $("royaltyRunBtn").disabled = !(taxClubsByCode && royaltyByCode && pfaqByCode.size > 0);
+    }
+
+    function clubCodeSort(a, b) {
+      const na = Number(a.code);
+      const nb = Number(b.code);
+      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+      return String(a.code).localeCompare(String(b.code), undefined, { numeric: true });
+    }
+
+    function goToRoyaltySection(sectionId, collapseKey, filterAttr) {
+      const card = $(sectionId);
+      const body = $(collapseKey + "Body");
+      const head = document.querySelector(`[data-collapse="${collapseKey}"]`);
+      if (body) setCollapsed(body, head?.querySelector(".collapse-toggle"), false);
+      if (card) {
+        card.classList.remove("section-flash");
+        void card.offsetWidth;
+        card.classList.add("section-flash");
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      // Optional row filter highlight for expected vs unexpected within amount gaps
+      if (filterAttr && body) {
+        body.querySelectorAll("tbody tr").forEach((tr) => {
+          const show = !filterAttr || tr.dataset.flag === filterAttr || tr.dataset.flag === "all";
+          tr.style.display = show || !tr.dataset.flag ? "" : "none";
+        });
+        // If filter is expected/unexpected, hide rows that don't match; empty message rows stay
+        if (filterAttr === "expected" || filterAttr === "unexpected") {
+          body.querySelectorAll("tbody tr[data-flag]").forEach((tr) => {
+            tr.style.display = tr.dataset.flag === filterAttr ? "" : "none";
+          });
+        } else if (filterAttr === "all") {
+          body.querySelectorAll("tbody tr[data-flag]").forEach((tr) => {
+            tr.style.display = "";
+          });
+        }
+      }
+    }
+
+    /* ---------- Royalty + PFAQ ---------- */
+    $("royaltyFile").addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      $("royaltyMeta").textContent = `Loading ${file.name}…`;
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const parsed = parseRoyalty(wb);
+        royaltyByCode = parsed.map;
+        $("royaltyMeta").textContent = `${file.name} · ${parsed.sheetName} · ${royaltyByCode.size} clubs`;
+        if (!taxClubsByCode) $("royaltyMeta").textContent += " · Run EFT checks first";
+        updateRoyaltyRunEnabled();
+      } catch (err) {
+        royaltyByCode = null;
+        $("royaltyMeta").textContent = "Failed: " + err.message;
+        updateRoyaltyRunEnabled();
+      }
+    });
+
+    $("pfaqFile").addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      $("pfaqMeta").textContent = `Loading ${file.name}…`;
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        const parsed = parsePfaq(wb);
+        pfaqByCode = parsed.map;
+        $("pfaqMeta").textContent = `${file.name} · ${parsed.sheetName} · ${pfaqByCode.size} clubs`;
+        updateRoyaltyRunEnabled();
+      } catch (err) {
+        pfaqByCode = new Map();
+        $("pfaqMeta").textContent = "Failed: " + err.message;
+        updateRoyaltyRunEnabled();
+      }
+    });
+
+    function runRoyaltyValidation() {
+      if (!taxClubsByCode) {
+        alert("Run EFT Allocation checks first (Tax Summary required).");
+        return;
+      }
+      if (!royaltyByCode) {
+        alert("Upload Royalty Report first.");
+        return;
+      }
+      if (!pfaqByCode.size) {
+        alert("Upload Upgraded Club List (PFAQ) — required to mark expected gaps.");
+        return;
+      }
+
+      const amountDiffs = [];
+      const onlyRoyalty = [];
+      const onlyTax = [];
+      let matched = 0;
+
+      for (const [code, tax] of taxClubsByCode.entries()) {
+        const roy = royaltyByCode.get(code);
+        if (!roy) {
+          onlyTax.push({
+            code,
+            club: tax.club,
+            gross: tax.gross,
+            pretax: tax.pretax,
+            isPfaq: pfaqHas(code),
+          });
+          continue;
+        }
+        matched += 1;
+        const grossDiff = (tax.gross || 0) - (roy.gross || 0);
+        const pretaxDiff = (tax.pretax || 0) - (roy.pretax || 0);
+        const hasDiff = Math.abs(grossDiff) > TOL || Math.abs(pretaxDiff) > TOL;
+        if (hasDiff) {
+          const isPfaq = pfaqHas(code);
+          amountDiffs.push({
+            code,
+            club: tax.club,
+            taxGross: tax.gross,
+            royGross: roy.gross,
+            grossDiff,
+            taxPretax: tax.pretax,
+            royPretax: roy.pretax,
+            pretaxDiff,
+            isPfaq,
+            unexpected: !isPfaq,
+          });
+        }
+      }
+
+      for (const [code, roy] of royaltyByCode.entries()) {
+        if (!taxClubsByCode.has(code)) {
+          const pf = pfaqByCode.get(code);
+          onlyRoyalty.push({
+            code,
+            abc: roy.abc,
+            name: roy.name,
+            gross: roy.gross,
+            pretax: roy.pretax,
+            isPfaq: Boolean(pf?.onList),
+            onList: Boolean(pf?.onList),
+            note: pf?.note || "",
+            status: pf?.status || "",
+            upgradeDate: pf?.upgradeDate || "—",
+          });
+        }
+      }
+
+      amountDiffs.sort(clubCodeSort);
+      onlyRoyalty.sort(clubCodeSort);
+      onlyTax.sort(clubCodeSort);
+
+      const unexpected = amountDiffs.filter((r) => r.unexpected);
+      const expected = amountDiffs.filter((r) => r.isPfaq);
+
+      $("rkEft").textContent = String(taxClubsByCode.size);
+      $("rkRoy").textContent = String(royaltyByCode.size);
+      $("rkMatch").textContent = String(matched);
+      $("rkDiff").textContent = String(amountDiffs.length);
+      $("rkUnexp").textContent = String(unexpected.length);
+      $("rkExp").textContent = String(expected.length);
+      $("rkOnlyRoy").textContent = String(onlyRoyalty.length);
+      $("rkOnlyTax").textContent = String(onlyTax.length);
+
+      const flagPill = (row) =>
+        row.isPfaq
+          ? `<span class="pill expected">Expected (upgraded)</span>`
+          : `<span class="pill bad">Unexpected</span>`;
+
+      $("amtDiffBodyRows").innerHTML = amountDiffs.length
+        ? amountDiffs
+            .map((r) => {
+              const cls = r.unexpected ? "row-unexpected" : "row-expected";
+              const flag = r.unexpected ? "unexpected" : "expected";
+              return `<tr class="${cls}" data-flag="${flag}">
+              <td>${flagPill(r)}</td>
+              <td>${r.club}</td>
+              <td class="money">${money(r.taxGross)}</td>
+              <td class="money">${money(r.royGross)}</td>
+              <td class="money ${Math.abs(r.grossDiff) > TOL ? "fail" : ""}">${money(r.grossDiff)}</td>
+              <td class="money">${money(r.taxPretax)}</td>
+              <td class="money">${money(r.royPretax)}</td>
+              <td class="money ${Math.abs(r.pretaxDiff) > TOL ? "fail" : ""}">${money(r.pretaxDiff)}</td>
+            </tr>`;
+            })
+            .join("")
+        : `<tr><td colspan="8" class="pass">No amount differences between Tax Summary and Royalty.</td></tr>`;
+
+      $("amtDiffMeta").textContent = amountDiffs.length
+        ? `${amountDiffs.length} gap(s) · ${unexpected.length} unexpected · ${expected.length} expected (upgraded) · sorted by club #`
+        : "All overlapping clubs match within $0.02";
+
+      $("onlyRoyRows").innerHTML = onlyRoyalty.length
+        ? onlyRoyalty
+            .map((r) => {
+              const onListPill = r.onList
+                ? `<span class="pill expected">Yes</span>`
+                : `<span class="pill bad">No</span>`;
+              const note = r.note || "—";
+              const status = r.status || "—";
+              const noteCls =
+                /presale|stop|exclude|delay/i.test(note) ? "warn" : "";
+              return `<tr class="row-only-roy">
+              <td>${r.abc ?? r.code}</td>
+              <td>${r.name || "—"}</td>
+              <td class="money">${money(r.gross)}</td>
+              <td class="money">${money(r.pretax)}</td>
+              <td>${onListPill}</td>
+              <td class="${noteCls}">${note}</td>
+              <td>${status}</td>
+              <td>${r.upgradeDate || "—"}</td>
+            </tr>`;
+            })
+            .join("")
+        : `<tr><td colspan="8" class="pass">None — every Royalty club exists in Tax Summary.</td></tr>`;
+
+      const noteSummary = {};
+      for (const r of onlyRoyalty) {
+        const k = r.note || "(blank)";
+        noteSummary[k] = (noteSummary[k] || 0) + 1;
+      }
+      const noteParts = Object.entries(noteSummary)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, n]) => `${n}× ${k}`)
+        .join(" · ");
+      $("onlyRoyMeta").textContent = onlyRoyalty.length
+        ? `${onlyRoyalty.length} club(s) · sorted by club # · NOTES: ${noteParts}`
+        : "None";
+
+      $("onlyTaxRows").innerHTML = onlyTax.length
+        ? onlyTax
+            .map((r) => {
+              const pill = r.isPfaq
+                ? `<span class="pill expected">Upgraded</span>`
+                : `<span class="pill info">EFT only</span>`;
+              return `<tr class="row-only-tax">
+              <td>${pill}</td>
+              <td>${r.club}</td>
+              <td class="money">${money(r.gross)}</td>
+              <td class="money">${money(r.pretax)}</td>
+            </tr>`;
+            })
+            .join("")
+        : `<tr><td colspan="4" class="pass">None — every Tax club exists in Royalty.</td></tr>`;
+      $("onlyTaxMeta").textContent = `${onlyTax.length} club(s) · sorted by club #`;
+
+      royaltyCompareRows = {
+        amountDiffs,
+        onlyRoyalty,
+        onlyTax,
+      };
+      $("exportRoyaltyCsvBtn").disabled = false;
+      $("royaltyResults").classList.remove("hidden");
+
+      setCollapsed($("amtDiffBody"), document.querySelector('[data-collapse="amtDiff"] .collapse-toggle'), false);
+      setCollapsed(
+        $("onlyRoyBody"),
+        document.querySelector('[data-collapse="onlyRoy"] .collapse-toggle'),
+        onlyRoyalty.length === 0
+      );
+      setCollapsed(
+        $("onlyTaxBody"),
+        document.querySelector('[data-collapse="onlyTax"] .collapse-toggle'),
+        onlyTax.length === 0
+      );
+    }
+
+    $("kpiAmtDiff")?.addEventListener("click", () => goToRoyaltySection("sectionAmtDiff", "amtDiff", "all"));
+    $("kpiExpected")?.addEventListener("click", () => goToRoyaltySection("sectionAmtDiff", "amtDiff", "expected"));
+    $("kpiUnexpected")?.addEventListener("click", () => goToRoyaltySection("sectionAmtDiff", "amtDiff", "unexpected"));
+    $("kpiOnlyRoy")?.addEventListener("click", () => goToRoyaltySection("sectionOnlyRoy", "onlyRoy"));
+    $("kpiOnlyTax")?.addEventListener("click", () => goToRoyaltySection("sectionOnlyTax", "onlyTax"));
+
+    $("royaltyRunBtn").addEventListener("click", runRoyaltyValidation);
+
+    $("exportRoyaltyCsvBtn").addEventListener("click", () => {
+      if (!royaltyCompareRows) return;
+      const lines = [];
+      lines.push("Section,Flag,Club,TaxGross,RoyaltyGross,GrossDiff,TaxPretax,RoyaltyPretax,PretaxDiff,PFAQ,NOTE,Status,UpgradeDate");
+      for (const r of royaltyCompareRows.amountDiffs) {
+        lines.push(
+          [
+            "AmountDiff",
+            r.unexpected ? "Unexpected" : "Expected",
+            `"${String(r.club).replaceAll('"', '""')}"`,
+            r.taxGross,
+            r.royGross,
+            r.grossDiff,
+            r.taxPretax,
+            r.royPretax,
+            r.pretaxDiff,
+            r.isPfaq ? "Y" : "N",
+            "",
+            "",
+            "",
+          ].join(",")
+        );
+      }
+      for (const r of royaltyCompareRows.onlyRoyalty) {
+        lines.push(
+          [
+            "OnlyRoyalty",
+            r.onList ? "OnUpgradedList" : "NotOnUpgradedList",
+            `"${String(r.name || r.code).replaceAll('"', '""')}"`,
+            "",
+            r.gross,
+            "",
+            "",
+            r.pretax,
+            "",
+            r.onList ? "Y" : "N",
+            `"${String(r.note || "").replaceAll('"', '""')}"`,
+            `"${String(r.status || "").replaceAll('"', '""')}"`,
+            r.upgradeDate || "",
+          ].join(",")
+        );
+      }
+      for (const r of royaltyCompareRows.onlyTax) {
+        lines.push(
+          [
+            "OnlyTax",
+            r.isPfaq ? "PFAQ" : "TaxOnly",
+            `"${String(r.club).replaceAll('"', '""')}"`,
+            r.gross,
+            "",
+            "",
+            r.pretax,
+            "",
+            "",
+            r.isPfaq ? "Y" : "N",
+          ].join(",")
+        );
+      }
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "eft-allocation-royalty-validation.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    $("clearBtn").addEventListener("click", () => {
+      fileBuffer = null;
+      fileName = "";
+      clubMismatchRows = [];
+      taxClubsByCode = null;
+      royaltyByCode = null;
+      pfaqByCode = new Map();
+      royaltyCompareRows = [];
+      $("file").value = "";
+      $("royaltyFile").value = "";
+      $("pfaqFile").value = "";
+      $("meta").textContent = "Waiting for EFT file…";
+      $("royaltyMeta").textContent = "Waiting for Royalty file…";
+      $("pfaqMeta").textContent = "Required — marks expected invoice gaps";
+      $("runBtn").disabled = true;
+      $("royaltyRunBtn").disabled = true;
+      $("exportClubCsvBtn").disabled = true;
+      $("exportRoyaltyCsvBtn").disabled = true;
+      $("results").classList.add("hidden");
+      $("royaltyResults").classList.add("hidden");
     });
   </script>
 </body>
